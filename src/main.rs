@@ -10,7 +10,12 @@ use poem_openapi::OpenApiService;
 use clap::Parser;
 use eyre::{Result, eyre};
 
+mod feed;
 mod webui;
+mod content;
+
+mod data;
+use data::Feed2PodcastURLs;
 
 #[derive(Parser, Debug)]
 #[command(name = "feed2podcast")]
@@ -58,6 +63,17 @@ struct Args {
         default_value_t = String::from("./static")
     )]
     shared_dir: String,
+
+    /// URL to a OpenAI compatible TTS API.
+    #[arg(
+        short,
+        long,
+        help = "URL to a OpenAI compatible TTS API.
+",
+        env = "FEED2PODCAST_TTS_API",
+        default_value_t = String::from("http://127.0.0.1:5000/v1")
+    )]
+    tts_url: String,
 }
 
 #[tokio::main]
@@ -73,12 +89,14 @@ async fn main() -> Result<()> {
     let static_files = Path::new(&args.shared_dir);
 
     // Create an OpenAPI service with the provided API and server URL.
-    let api_service = OpenApiService::new((), "feed2podcast", "0.1.0").server(args.url);
+    let api_service = OpenApiService::new((feed::Router, content::Router), "feed2podcast", "0.1.0")
+        .server(args.url.clone())
+        .url_prefix("/api");
 
     // Generate SwaggerUI documentation for the API.
     let docs = api_service.swagger_ui();
 
-    let mut server = Route::new().nest("/api", api_service);
+    let mut server = Route::new().nest("api", api_service);
     if !args.disable_docs {
         server = server.nest("docs", docs);
     }
@@ -87,7 +105,10 @@ async fn main() -> Result<()> {
 
     // Start the server with CORS middleware enabled.
     poem::Server::new(TcpListener::bind(format!("0.0.0.0:{}", args.port)))
-        .run(server.with(Cors::new()).with(Tracing))
+        .run(server.with(Cors::new()).with(Tracing).data(Feed2PodcastURLs {
+            base: args.url,
+            tts: args.tts_url
+        }))
         .await
         .map_err(|e| eyre!(format!("Server failed with error: {e}")))
 }
