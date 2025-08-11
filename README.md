@@ -6,7 +6,7 @@ With this tool you can generate a podcast feed based on a regular text based RSS
 
 Generated podcasts are cached to reduce response time for recurring requests.
 
-> !NOTE
+> [!NOTE]
 > If you are familiar with tools like [RSSBridge](https://github.com/RSS-Bridge/rss-bridge). It is similar to that just from RSS Feed to Podcast.
 
 ## Usage
@@ -15,5 +15,5 @@ Either run the `feed2podcast` binary or deploy the server using docker (see `doc
 
 Next go to `http://127.0.0.1:3000/docs` (or `:8080` when using docker). Here you can build the Podcast feed using the `/api/feed/build` endpoint. The resulting URL can then be plugged into your Pod-Catcher and you are ready to go.
 
-> !NOTE
+> [!NOTE]
 > Depending on the speed of the TTS server you are using the first download of a Episode might take a while.
