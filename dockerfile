@@ -6,7 +6,7 @@ RUN apt-get update && \
     apt-get install --yes cmake pkg-config libssl-dev --no-install-recommends && \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-FROM base as builder
+FROM base AS builder
 
 COPY . .
 RUN cargo build --bin feed2podcast --release
