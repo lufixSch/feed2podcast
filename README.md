@@ -13,7 +13,7 @@ Generated podcasts are cached to reduce response time for recurring requests.
 
 Either run the `feed2podcast` binary or deploy the server using docker (see `docker-compose.yml`). Don't forget to configure it to your needs using environment variables or command line arguments (see `feed2podcast --help` for all options).
 
-Next go to `http://127.0.0.1:3000/docs` (or `:8080` when using docker). Here you can build the Podcast feed using the `/api/feed/build` endpoint. The resulting URL can then be plugged into your Pod-Catcher and you are ready to go.
+Next go to `http://127.0.0.1:3000` (or `:8080` when using docker). Here you can build the Podcast feed. The resulting URL can then be plugged into your Pod-Catcher and you are ready to go.
 
 > [!NOTE]
 > Depending on the speed of the TTS server you are using, the first download of an Episode might take a while.
