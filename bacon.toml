@@ -8,6 +8,7 @@
 default_job = "check"
 env.CARGO_TERM_COLOR = "always"
 env.FEED2PODCAST_TTS_API = "http://127.0.0.1:8880/v1"
+env.FEED2PODCAST_URL = "http://192.168.180.38:3000"
 
 [jobs.check]
 command = ["cargo", "check"]

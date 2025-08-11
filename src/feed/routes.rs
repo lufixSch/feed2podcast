@@ -26,12 +26,14 @@ impl Router {
         /// The Feed URL
         Query(url): Query<String>,
         /// HTML elements/CSS Selectors to ignore when parsing the content
-        Query(ignore): Query<Vec<String>>,
+        Query(ignore): Query<Option<Vec<String>>>,
 
         /// Whether to normalize text for TTS (will improve TTS but can lead to errors when content
         /// includes long numbers)
         Query(normalize): Query<bool>,
     ) -> Result<PlainText<String>> {
+        let ingore_unpacked = ignore.unwrap_or_default();
+
         let content = reqwest::get(url.clone())
             .await
             .map_err(|e| {
@@ -71,7 +73,7 @@ impl Router {
 
                     let mut enclosure = Enclosure::default();
                     let mut url_params: Vec<(&str, String)> =
-                        ignore.clone().into_iter().map(|i| ("ignore", i)).collect();
+                        ingore_unpacked.clone().into_iter().map(|i| ("ignore", i)).collect();
                     url_params.extend([
                         ("url", url.clone()),
                         ("uid", uid),
@@ -83,7 +85,7 @@ impl Router {
 
                     enclosure.set_url(
                         Url::parse_with_params(
-                            &format!("{}/{}", app_urls.base, voice),
+                            &format!("{}/api/content/{}", app_urls.base, voice),
                             &url_params,
                         )
                         .map_err(|e| {
