@@ -14,13 +14,23 @@ pub struct Router;
 
 #[OpenApi(prefix_path = "feed")]
 impl Router {
+    /// Generate a podcast feed from a regular RSS feed where the link to the audio points to the
+    /// "Get Podcast Audio" endpoint
     #[oai(path = "/:voice", method = "get")]
     async fn podcast_feed(
         &self,
         Data(app_urls): Data<&Feed2PodcastURLs>,
+
+        /// The voice to use for the podcast
         Path(voice): Path<String>,
+        /// The Feed URL
         Query(url): Query<String>,
-        Query(selector): Query<String>,
+        /// HTML elements/CSS Selectors to ignore when parsing the content
+        Query(ignore): Query<Vec<String>>,
+
+        /// Whether to normalize text for TTS (will improve TTS but can lead to errors when content
+        /// includes long numbers)
+        Query(normalize): Query<bool>,
     ) -> Result<PlainText<String>> {
         let content = reqwest::get(url.clone())
             .await
@@ -50,11 +60,31 @@ impl Router {
                 .map(|item| {
                     let mut new_item = item.clone();
 
+                    let uid = item
+                        .guid
+                        .clone()
+                        .ok_or(Error::from_string(
+                            "Unable to get GUID for some items",
+                            StatusCode::BAD_REQUEST,
+                        ))?
+                        .value;
+
                     let mut enclosure = Enclosure::default();
+                    let mut url_params: Vec<(&str, String)> =
+                        ignore.clone().into_iter().map(|i| ("ignore", i)).collect();
+                    url_params.extend([
+                        ("url", url.clone()),
+                        ("uid", uid),
+                        (
+                            "normalize",
+                            String::from(if normalize { "true" } else { "false" }),
+                        ),
+                    ]);
+
                     enclosure.set_url(
                         Url::parse_with_params(
                             &format!("{}/{}", app_urls.base, voice),
-                            &[("url", url.clone()), ("selector", selector.clone())],
+                            &url_params,
                         )
                         .map_err(|e| {
                             Error::from_string(

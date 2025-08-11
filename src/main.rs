@@ -10,12 +10,14 @@ use poem_openapi::OpenApiService;
 use clap::Parser;
 use eyre::{Result, eyre};
 
+mod content;
 mod feed;
 mod webui;
-mod content;
 
 mod data;
 use data::Feed2PodcastURLs;
+
+use crate::data::Feed2PodcastDirs;
 
 #[derive(Parser, Debug)]
 #[command(name = "feed2podcast")]
@@ -64,6 +66,16 @@ struct Args {
     )]
     shared_dir: String,
 
+    /// Cache directory for podcast files
+    #[arg(
+        short,
+        long,
+        help = "Cache directory for podcast files",
+        env = "FEED2PODCAST_CACHE_DIR",
+        default_value_t = String::from("./cache")
+    )]
+    cache_dir: String,
+
     /// URL to a OpenAI compatible TTS API.
     #[arg(
         short,
@@ -105,10 +117,19 @@ async fn main() -> Result<()> {
 
     // Start the server with CORS middleware enabled.
     poem::Server::new(TcpListener::bind(format!("0.0.0.0:{}", args.port)))
-        .run(server.with(Cors::new()).with(Tracing).data(Feed2PodcastURLs {
-            base: args.url,
-            tts: args.tts_url
-        }))
+        .run(
+            server
+                .with(Cors::new())
+                .with(Tracing)
+                .data(Feed2PodcastURLs {
+                    base: args.url,
+                    tts: args.tts_url,
+                })
+                .data(Feed2PodcastDirs {
+                    cache: args.cache_dir,
+                    shared: args.shared_dir,
+                }),
+        )
         .await
         .map_err(|e| eyre!(format!("Server failed with error: {e}")))
 }
