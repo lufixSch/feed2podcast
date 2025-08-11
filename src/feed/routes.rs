@@ -72,8 +72,11 @@ impl Router {
                         .value;
 
                     let mut enclosure = Enclosure::default();
-                    let mut url_params: Vec<(&str, String)> =
-                        ingore_unpacked.clone().into_iter().map(|i| ("ignore", i)).collect();
+                    let mut url_params: Vec<(&str, String)> = ingore_unpacked
+                        .clone()
+                        .into_iter()
+                        .map(|i| ("ignore", i))
+                        .collect();
                     url_params.extend([
                         ("url", url.clone()),
                         ("uid", uid),
@@ -105,5 +108,49 @@ impl Router {
         );
 
         Ok(PlainText(podcast_ch.to_string()))
+    }
+
+    /// Helper endpoint to generate feed URL directly from the API docs
+    #[oai(path = "/build/:voice", method = "get")]
+    async fn build_feed_url(
+        &self,
+        Data(app_urls): Data<&Feed2PodcastURLs>,
+
+        /// The voice to use for the podcast
+        Path(voice): Path<String>,
+        /// The Feed URL
+        Query(url): Query<String>,
+        /// HTML elements/CSS Selectors to ignore when parsing the content
+        Query(ignore): Query<Option<Vec<String>>>,
+
+        /// Whether to normalize text for TTS (will improve TTS but can lead to errors when content
+        /// includes long numbers). Defaults to `true`
+        Query(normalize): Query<Option<bool>>,
+    ) -> Result<PlainText<String>> {
+        let ingore_unpacked = ignore.unwrap_or_default();
+        let normalize_unpacked = normalize.unwrap_or(true);
+
+        let mut url_params: Vec<(&str, String)> =
+            ingore_unpacked.into_iter().map(|i| ("ignore", i)).collect();
+        url_params.extend([
+            ("url", url.clone()),
+            (
+                "normalize",
+                String::from(if normalize_unpacked { "true" } else { "false" }),
+            ),
+        ]);
+
+        let feed_url = Url::parse_with_params(
+            &format!("{}/api/feed/{}", app_urls.base, voice),
+            &url_params,
+        )
+        .map_err(|e| {
+            Error::from_string(
+                format!("Unable to generate Content url for {}: {}", url, e),
+                StatusCode::BAD_REQUEST,
+            )
+        })?;
+
+        Ok(PlainText(feed_url.to_string()))
     }
 }

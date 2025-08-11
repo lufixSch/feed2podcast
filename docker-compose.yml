@@ -1,0 +1,11 @@
+services:
+  server:
+    build: .
+    container_name: feed2podcast
+    environment:
+      FEED2PODCAST_URL: "http://127.0.0.1:${PORT:-8080}"
+      FEED2PODCAST_TTS_API: ${TTS_API:-http://127.0.0.1:5000/v1}
+    volumes:
+      - ./cache:/app/cache
+    ports:
+      - ${PORT:-8080}:3000

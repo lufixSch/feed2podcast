@@ -2,7 +2,9 @@ use std::{fs::create_dir_all, path};
 
 use poem::{Error, Result, web::Data};
 use poem_openapi::{
-    param::{Path, Query}, payload::{Attachment, Binary}, ApiResponse, OpenApi
+    ApiResponse, OpenApi,
+    param::{Path, Query},
+    payload::Binary,
 };
 use reqwest::StatusCode;
 use rss::Channel;
@@ -15,10 +17,7 @@ pub struct Router;
 #[derive(Debug, ApiResponse)]
 enum DownloadFileResponse {
     #[oai(status = 200)]
-    Audio(
-        Binary<Vec<u8>>,
-        #[oai(header = "content-type")] String,
-    ),
+    Audio(Binary<Vec<u8>>, #[oai(header = "content-type")] String),
 }
 
 /// Convert URL string to posix path
@@ -185,6 +184,9 @@ impl Router {
             })?
         };
 
-        Ok(DownloadFileResponse::Audio(Binary(audio), String::from("audio/mpeg")))
+        Ok(DownloadFileResponse::Audio(
+            Binary(audio),
+            String::from("audio/mpeg"),
+        ))
     }
 }
