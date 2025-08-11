@@ -1,5 +1,6 @@
 use std::{fs::create_dir_all, path};
 
+use eyre::eyre;
 use poem::{Error, Result, web::Data};
 use poem_openapi::{
     ApiResponse, OpenApi,
@@ -9,6 +10,7 @@ use poem_openapi::{
 use reqwest::StatusCode;
 use rss::Channel;
 use serde_json::json;
+use url::Url;
 
 use crate::data::{Feed2PodcastDirs, Feed2PodcastURLs};
 
@@ -21,10 +23,13 @@ enum DownloadFileResponse {
 }
 
 /// Convert URL string to posix path
-fn url_to_path(url: &str) -> &str {
-    url.strip_prefix("https://")
-        .or(url.strip_prefix("http://"))
-        .unwrap_or(url)
+fn url_to_path(url: &str) -> eyre::Result<String> {
+    match Url::parse(url) {
+        Ok(url) => {
+            Ok(String::from(url.host_str().ok_or(eyre!("Got URL without howt!"))?) + url.path())
+        }
+        Err(_) => Ok(String::from(url)),
+    }
 }
 
 #[OpenApi(prefix_path = "content")]
@@ -53,11 +58,21 @@ impl Router {
         /// includes long numbers)
         Query(normalize): Query<bool>,
     ) -> Result<DownloadFileResponse> {
-        let url_path = url_to_path(&url);
-        let id_path = url_to_path(&uid);
+        let url_path = url_to_path(&url).map_err(|e| {
+            Error::from_string(
+                format!("Unable to create cache directory from feed URL: {e}"),
+                StatusCode::INTERNAL_SERVER_ERROR,
+            )
+        })?;
+        let id_path = url_to_path(&uid).map_err(|e| {
+            Error::from_string(
+                format!("Unable to create cache directory from UID: {e}"),
+                StatusCode::INTERNAL_SERVER_ERROR,
+            )
+        })?;
         let file_dir = path::Path::new(&app_dirs.cache)
-            .join(url_path)
-            .join(id_path);
+            .join(&url_path)
+            .join(&id_path);
         let audio_path = file_dir.join(format!("{voice}.mp3"));
 
         if !file_dir.exists() {
