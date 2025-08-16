@@ -20,13 +20,6 @@ ENV FEED2PODCAST_PORT="3000"
 ENV FEED2PODCAST_SHARED_DIR="/app/static"
 ENV FEED2PODCAST_CACHE_DIR="/app/cache"
 
-RUN apt-get update && \
-    apt-get upgrade --yes --no-install-recommends && \
-    apt-get install --yes cmake pkg-config libssl-dev --no-install-recommends && \
-    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
-
-WORKDIR /app
-
 COPY --from=builder /app/target/release/feed2podcast ./feed2podcast
 COPY static /app/static
 
