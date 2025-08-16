@@ -3,7 +3,7 @@ use std::{fs::create_dir_all, path, sync::Arc};
 use eyre::eyre;
 use poem::{Error, Result, web::Data};
 use poem_openapi::{
-    ApiResponse, OpenApi,
+    OpenApi,
     param::{Path, Query},
     payload::Binary,
 };
@@ -13,16 +13,11 @@ use url::Url;
 
 use crate::{
     content::generate::generate_podcast,
-    data::{Feed2PodcastDirs, Feed2PodcastURLs},
+    data::{Feed2PodcastDirs, Feed2PodcastTTSConfig, Feed2PodcastURLs},
+    schemas::{DownloadFileResponse, CategoryTags},
 };
 
 pub struct Router;
-
-#[derive(Debug, ApiResponse)]
-enum DownloadFileResponse {
-    #[oai(status = 200)]
-    Audio(Binary<Vec<u8>>, #[oai(header = "content-type")] String),
-}
 
 /// Convert URL string to posix path
 fn url_to_path(url: &str) -> eyre::Result<String> {
@@ -34,7 +29,7 @@ fn url_to_path(url: &str) -> eyre::Result<String> {
     }
 }
 
-#[OpenApi(prefix_path = "content")]
+#[OpenApi(prefix_path = "content", tag = "CategoryTags::Feed")]
 impl Router {
     /// Create Podcast audio (on demand) for a given article in a RSS Feed
     /// Caches audio to reduce response time for recurring requests.
@@ -43,6 +38,7 @@ impl Router {
         &self,
         Data(app_urls): Data<&Feed2PodcastURLs>,
         Data(app_dirs): Data<&Feed2PodcastDirs>,
+        Data(tts_conf): Data<&Feed2PodcastTTSConfig>,
         Data(permit): Data<&Arc<Semaphore>>,
 
         /// The voice to use for the podcast
@@ -95,6 +91,7 @@ impl Router {
             &mut ignore,
             normalize,
             &app_urls.tts,
+            &tts_conf.model,
             permit,
         )
         .await?;

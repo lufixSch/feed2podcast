@@ -14,6 +14,7 @@ pub async fn generate_podcast(
     ignore: &mut Vec<String>,
     normalize: bool,
     tts_api_base: &str,
+    tts_model: &str,
     permit: &Semaphore,
 ) -> Result<Vec<u8>> {
     let _perm = permit.acquire().await.map_err(|e| {
@@ -91,7 +92,7 @@ pub async fn generate_podcast(
         println!("{}", &text_content);
 
         let client = reqwest::Client::new();
-        let tts_req_body = json!({ "input": text_content, "voice": voice, "normalization_options": { "normalize": normalize}});
+        let tts_req_body = json!({ "input": text_content, "model": tts_model, "voice": voice, "normalization_options": { "normalize": normalize}});
         let podcast = client
             .post(format!("{}/audio/speech", tts_api_base))
             .body(tts_req_body.to_string())

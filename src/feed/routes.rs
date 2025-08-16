@@ -8,11 +8,11 @@ use reqwest::StatusCode;
 use rss::{Channel, Enclosure, Item};
 use url::Url;
 
-use crate::data::Feed2PodcastURLs;
+use crate::{data::Feed2PodcastURLs, schemas::CategoryTags};
 
 pub struct Router;
 
-#[OpenApi(prefix_path = "feed")]
+#[OpenApi(prefix_path = "feed", tag = "CategoryTags::Feed")]
 impl Router {
     /// Generate a podcast feed from a regular RSS feed where the link to the audio points to the
     /// "Get Podcast Audio" endpoint

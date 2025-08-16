@@ -11,14 +11,16 @@ use clap::Parser;
 use eyre::{Result, eyre};
 
 mod content;
+mod demo;
 mod feed;
 mod webui;
 
+mod schemas;
 mod data;
 use data::Feed2PodcastURLs;
 use tokio::sync::Semaphore;
 
-use crate::data::Feed2PodcastDirs;
+use crate::data::{Feed2PodcastDirs, Feed2PodcastTTSConfig};
 
 #[derive(Parser, Debug)]
 #[command(name = "feed2podcast")]
@@ -84,9 +86,29 @@ struct Args {
         help = "URL to a OpenAI compatible TTS API.
 ",
         env = "FEED2PODCAST_TTS_API",
-        default_value_t = String::from("http://127.0.0.1:5000/v1")
+        default_value = "http://127.0.0.1:5000/v1"
     )]
     tts_url: String,
+
+    /// Available Voices for TTS (uses audio/voices if not set)
+    #[arg(
+        short,
+        long,
+        help = "Comma separated list of available Voices for TTS (uses audio/voices if not set)",
+        env = "FEED2PODCAST_VOICES",
+        value_delimiter = ','
+    )]
+    voices: Vec<String>,
+
+    /// TTS Model to use
+    #[arg(
+        short,
+        long,
+        help = "TTS Model to use (Defaults to 'kokoro')",
+        env = "FEED2PODCAST_MODEL",
+        default_value = "kokoro"
+    )]
+    model: String,
 }
 
 #[tokio::main]
@@ -107,9 +129,14 @@ async fn main() -> Result<()> {
     let podcast_generation_permit = Arc::new(Semaphore::new(1));
 
     // Create an OpenAPI service with the provided API and server URL.
-    let api_service = OpenApiService::new((feed::Router, content::Router), "feed2podcast", "0.1.0")
-        .server(args.url.clone())
-        .url_prefix("/api");
+    let api_service = OpenApiService::new(
+        (feed::Router, content::Router, demo::Router),
+        "feed2podcast",
+        "0.1.0",
+    )
+    .description("Generate podcast feed from text based rss feeds using TTS\n\n[WebUI](/)")
+    .server(args.url.clone())
+    .url_prefix("/api");
 
     // Generate SwaggerUI documentation for the API.
     let docs = api_service.swagger_ui();
@@ -134,6 +161,14 @@ async fn main() -> Result<()> {
                 .data(Feed2PodcastDirs {
                     cache: args.cache_dir,
                     shared: args.shared_dir,
+                })
+                .data(Feed2PodcastTTSConfig {
+                    model: args.model,
+                    voices: if args.voices.is_empty() {
+                        None
+                    } else {
+                        Some(args.voices)
+                    },
                 })
                 .data(podcast_generation_permit),
         )
