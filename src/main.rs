@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::{path::Path, sync::Arc};
 
 use poem::{
     EndpointExt, Route,
@@ -16,6 +16,7 @@ mod webui;
 
 mod data;
 use data::Feed2PodcastURLs;
+use tokio::sync::Semaphore;
 
 use crate::data::Feed2PodcastDirs;
 
@@ -100,6 +101,11 @@ async fn main() -> Result<()> {
     let args = Args::parse();
     let static_files = Path::new(&args.shared_dir);
 
+    // The number of allowed parallel podcast generations
+    // WARNING: Currently more than 1 could cause issues where one podcast is generated multiple
+    // times
+    let podcast_generation_permit = Arc::new(Semaphore::new(1));
+
     // Create an OpenAPI service with the provided API and server URL.
     let api_service = OpenApiService::new((feed::Router, content::Router), "feed2podcast", "0.1.0")
         .server(args.url.clone())
@@ -128,7 +134,8 @@ async fn main() -> Result<()> {
                 .data(Feed2PodcastDirs {
                     cache: args.cache_dir,
                     shared: args.shared_dir,
-                }),
+                })
+                .data(podcast_generation_permit),
         )
         .await
         .map_err(|e| eyre!(format!("Server failed with error: {e}")))

@@ -77,7 +77,8 @@
           const ignore = document
             .getElementById("ignore")
             .value.split(",")
-            .map((p) => `ignore=${encodeURIComponent(p.trim())}`)
+            .filter(p => p.trim() != "")
+            .map(p => `ignore=${encodeURIComponent(p.trim())}`)
             .join("&");
           const ignore_query = ignore ? "&" + ignore : "";
 
