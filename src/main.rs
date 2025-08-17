@@ -1,4 +1,4 @@
-use std::{path::Path, sync::Arc};
+use std::sync::Arc;
 
 use poem::{
     EndpointExt, Route,
@@ -15,8 +15,8 @@ mod demo;
 mod feed;
 mod webui;
 
-mod schemas;
 mod data;
+mod schemas;
 use data::Feed2PodcastURLs;
 use tokio::sync::Semaphore;
 
@@ -58,16 +58,6 @@ struct Args {
         default_value_t = false
     )]
     disable_docs: bool,
-
-    /// Shared files for WebUI.
-    #[arg(
-        short,
-        long,
-        help = "Location to the Shared files for the webui",
-        env = "FEED2PODCAST_SHARED_DIR",
-        default_value_t = String::from("./static")
-    )]
-    shared_dir: String,
 
     /// Cache directory for podcast files
     #[arg(
@@ -121,7 +111,6 @@ async fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
 
     let args = Args::parse();
-    let static_files = Path::new(&args.shared_dir);
 
     // The number of allowed parallel podcast generations
     // WARNING: Currently more than 1 could cause issues where one podcast is generated multiple
@@ -138,6 +127,8 @@ async fn main() -> Result<()> {
     .server(args.url.clone())
     .url_prefix("/api");
 
+    let webui_service = OpenApiService::new(webui::Router, "feed2podcast", "0.1.0");
+
     // Generate SwaggerUI documentation for the API.
     let docs = api_service.swagger_ui();
 
@@ -146,7 +137,7 @@ async fn main() -> Result<()> {
         server = server.nest("docs", docs);
     }
 
-    server = server.nest("/", webui::Router::get(static_files));
+    server = server.nest("/", webui_service);
 
     // Start the server with CORS middleware enabled.
     poem::Server::new(TcpListener::bind(format!("0.0.0.0:{}", args.port)))
@@ -160,7 +151,6 @@ async fn main() -> Result<()> {
                 })
                 .data(Feed2PodcastDirs {
                     cache: args.cache_dir,
-                    shared: args.shared_dir,
                 })
                 .data(Feed2PodcastTTSConfig {
                     model: args.model,

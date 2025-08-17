@@ -1,0 +1,92 @@
+{% extends "layout.html" %} {% block content %}
+<form id="feedForm">
+  <label for="feedUrl">
+    <h2>Feed URL:</h2>
+  </label>
+  <input type="text" id="feedUrl" name="feedUrl" required />
+
+  <label id="voiceSelect" for="voice">
+    <h2>Voice:</h2>
+    <a href="/demo">Demo</a>
+  </label>
+  <select id="voice" name="voice" required>
+    {% for voice in voices%}
+    <option value="{{voice}}">{{voice}}</option>
+    {% endfor %}
+  </select>
+
+  <label for="ignore">
+    <h2>Ignore:</h2>
+    <p>
+      Comma separated list of HTML Elements/CSS Selectors to ignore when
+      scraping content for TTS (script and css tags are always ignored).
+    </p>
+  </label>
+  <input
+    type="text"
+    id="ignore"
+    name="ignore"
+    placeholder="e.g. code, .hidden"
+  />
+
+  <label for="normalize"
+    ><h2>Normalize:</h2>
+    <p>
+      Whether to normalize text for TTS (will improve TTS but can lead to errors
+      when content includes long numbers).
+    </p></label
+  >
+  <input type="checkbox" id="normalize" checked name="normalize" />
+
+  <button type="submit">Generate Podcast URL</button>
+
+  <div id="result">
+    Feed URL:
+    <a id="result_url" href=""></a>
+  </div>
+</form>
+
+<style>
+  #voiceSelect {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+  }
+
+  #result {
+    margin-top: 2rem;
+    font-size: 16px;
+    visibility: hidden;
+  }
+</style>
+
+<script>
+  const API_BASE = "{{api_base}}";
+
+  document.getElementById("feedForm").addEventListener("submit", function (e) {
+    e.preventDefault();
+    const feedUrl = encodeURIComponent(
+      document.getElementById("feedUrl").value,
+    );
+
+    const voice = document.getElementById("voice").value;
+
+    const ignore = document
+      .getElementById("ignore")
+      .value.split(",")
+      .filter((p) => p.trim() != "")
+      .map((p) => `ignore=${encodeURIComponent(p.trim())}`)
+      .join("&");
+    const ignore_query = ignore ? "&" + ignore : "";
+
+    const normalize = document.getElementById("normalize").checked;
+
+    const baseUrl = API_BASE + `/api/feed/${voice}`;
+    const fullUrl = `${baseUrl}?url=${feedUrl}${ignore_query}&normalize=${normalize}`;
+
+    document.getElementById("result").style.visibility = "visible";
+    document.getElementById("result_url").href = fullUrl;
+    document.getElementById("result_url").textContent = fullUrl;
+  });
+</script>
+{% endblock %}

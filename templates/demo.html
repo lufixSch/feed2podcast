@@ -1,0 +1,45 @@
+{% extends "layout.html" %} {% block content %}
+<body>
+  <form id="demoForm">
+    <label for="voiceSelect">
+      <h2>Select a Voice:</h2>
+    </label>
+    <select id="voiceSelect" name="voiceSelect" required>
+      {% for voice in voices%}
+      <option value="{{voice}}">{{voice}}</option>
+      {% endfor %}
+    </select>
+
+    <button type="submit">Play Demo</button>
+
+    <div id="audioPlayerContainer">
+      <audio id="demoAudio" controls style="width: 100%; display: none"></audio>
+    </div>
+  </form>
+
+  <script>
+    document
+      .getElementById("demoForm")
+      .addEventListener("submit", async function (e) {
+        e.preventDefault();
+        const selectedVoice = document.getElementById("voiceSelect").value;
+
+        try {
+          const response = await fetch(`/api/demo/${selectedVoice}`);
+          if (!response.ok)
+            throw new Error(`Failed to load demo for voice "${selectedVoice}"`);
+
+          const blob = await response.blob();
+          const audioUrl = URL.createObjectURL(blob);
+          const audioPlayer = document.getElementById("demoAudio");
+          audioPlayer.src = audioUrl;
+          audioPlayer.style.display = "block";
+          audioPlayer.play();
+        } catch (error) {
+          console.error(error);
+          alert(`Failed to load demo for voice "${selectedVoice}".`);
+        }
+      });
+  </script>
+</body>
+{% endblock %}

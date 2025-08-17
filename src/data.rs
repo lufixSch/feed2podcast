@@ -8,7 +8,6 @@ pub struct Feed2PodcastURLs {
 #[derive(Clone)]
 pub struct Feed2PodcastDirs {
     pub cache: String,
-    pub shared: String,
 }
 
 #[derive(Clone)]

@@ -8,6 +8,7 @@ name = "feed2podcast"
 path = "src/main.rs"
 
 [dependencies]
+askama = "0.14.0"
 clap = { version = "4.5.43", features = ["derive", "suggestions", "color", "cargo", "env"] }
 color-eyre = "0.6.5"
 eyre = "0.6.12"

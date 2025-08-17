@@ -8,6 +8,9 @@ pub enum CategoryTags {
 
     /// Voice demos and similar
     Demo,
+
+    /// WebUI pages
+    WebUI
 }
 
 #[derive(Debug, ApiResponse)]

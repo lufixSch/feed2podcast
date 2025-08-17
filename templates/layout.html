@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <head>
+      <meta charset="UTF-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1" />
+      <title>{% block title %}Feed2Podcast WebUI {% endblock %}</title>
+      <meta
+        name="description"
+        content="{{ description }}"
+      />
+      <meta name="author" content="LufixSch" />
+      <meta
+        property="og:title"
+        content="{% block title %}Feed2Podcast WebUI {% endblock %}"
+      />
+      <meta
+        property="og:description"
+        content="{{ description }}"
+      />
+      <meta property="og:type" content="website" />
+    </head>
+  </head>
+  <body>
+    {% block content %}
+    <p>Something went wrong!</p>
+    {% endblock %}
+    <style>
+      body {
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu,
+          Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+        background-color: #f9f9f9;
+        color: #333;
+        margin: 0;
+        padding: 2rem;
+      }
+
+      h2 {
+        font-size: 16px;
+        margin-bottom: 0.5rem;
+      }
+
+      label p {
+        color: #888;
+        font-size: 14px;
+        margin-top: 0.25rem;
+      }
+
+      form {
+        max-width: 500px;
+        margin: auto;
+        background-color: white;
+        padding: 2rem;
+        border-radius: 8px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.05);
+      }
+
+      input[type="text"],
+      input[type="checkbox"],
+      select {
+        width: 100%;
+        margin-bottom: 1.5rem;
+        padding: 0.75rem;
+        border-radius: 4px;
+        border: 1px solid #ccc;
+        font-size: 16px;
+      }
+
+      input[type="text"] {
+        width: calc(100% - 2rem);
+      }
+
+      select,
+      button {
+        display: block;
+        width: 100%;
+        margin-bottom: 1.5rem;
+        padding: 0.75rem 1.5rem;
+        border-radius: 4px;
+        border: 1px solid #ccc;
+        font-size: 16px;
+      }
+
+      button[type="submit"] {
+        background-color: #007bff;
+        color: white;
+        border: none;
+        cursor: pointer;
+      }
+
+      button[type="submit"]:hover {
+        background-color: #0056b3;
+      }
+
+
+      @media (prefers-color-scheme: dark) {
+        body {
+          background-color: #1a1a1a;
+          color: #f9f9f9;
+        }
+
+        form {
+          background-color: #2c2c2c;
+          box-shadow: 0 0 10px rgba(255, 255, 255, 0.05);
+        }
+
+        input[type="text"],
+        input[type="checkbox"],
+        select {
+          border-color: #444;
+          background-color: #3c3c3c;
+          color: #f9f9f9;
+        }
+
+        button[type="submit"] {
+          background-color: #0056b3;
+          box-shadow: none;
+        }
+
+        button[type="submit"]:hover {
+          background-color: #007bff;
+        }
+
+        a {
+          color: #00bfff;
+        }
+
+        a:visited {
+          color: #8a2be2;
+        }
+      }
+    </style>
+  </body>
+</html>
