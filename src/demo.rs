@@ -115,7 +115,6 @@ impl Router {
     ) -> Result<DownloadFileResponse> {
         let audio_path = cache::get_demo_path(&app_dirs.cache, &tts_conf.model, &voice)?;
 
-        tracing::info!("Creating demo audio!");
         let audio = generate_demo(&audio_path, &voice, &app_urls.tts, &tts_conf.model).await?;
 
         Ok(DownloadFileResponse::Audio(
