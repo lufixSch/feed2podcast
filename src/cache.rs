@@ -53,6 +53,24 @@ pub fn get_podcast_path(cache_dir: &str, url: &str, uid: &str, voice: &str) -> R
     Ok(audio_path)
 }
 
+/// Generates file path for a given voice demo.
+/// Creates missing directories
+pub fn get_demo_path(cache_dir: &str, model: &str, voice: &str) -> Result<PathBuf> {
+    let cache_dir = Path::new(cache_dir).join(DEMO_DIR).join(model);
+    let audio_path = cache_dir.join(format!("{voice}.mp3"));
+
+    if !cache_dir.exists() {
+        create_dir_all(cache_dir).map_err(|_| {
+            Error::from_string(
+                "Unable to create cache directory for demos",
+                StatusCode::INTERNAL_SERVER_ERROR,
+            )
+        })?;
+    };
+
+    Ok(audio_path)
+}
+
 /// Different methods to cleanup cache
 #[derive(Clone)]
 pub enum CleanupMethod {
@@ -68,7 +86,7 @@ pub enum CleanupMethod {
 
 /// Cleanup cache by removing unneeded elements using the given method
 /// Demo directory is always ignored
-pub fn run_cache_cleanup(cache_dir: &str, method: CleanupMethod) -> eyre::Result<()> {
+pub fn run_cleanup(cache_dir: &str, method: CleanupMethod) -> eyre::Result<()> {
     const LOGGING_TARGET: &str = "cache::cleanup";
 
     let cache_dir = Path::new(cache_dir);
@@ -187,10 +205,11 @@ pub fn run_cache_cleanup(cache_dir: &str, method: CleanupMethod) -> eyre::Result
     }
 }
 
-pub async fn run_cache_cleanup_task(cache_dir: String, method: CleanupMethod) {
+/// Async task that runs cleanup and captures all errors
+pub async fn run_cleanup_task(cache_dir: String, method: CleanupMethod) {
     const LOGGING_TARGET: &str = "cache::cleanup";
 
-    if let Err(e) = run_cache_cleanup(&cache_dir, method) {
+    if let Err(e) = run_cleanup(&cache_dir, method) {
         tracing::error!(target: LOGGING_TARGET, "{}", e);
     } else {
         tracing::info!(target: LOGGING_TARGET, "Completed")

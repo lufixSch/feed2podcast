@@ -20,11 +20,9 @@ mod data;
 mod schemas;
 use data::Feed2PodcastURLs;
 use tokio::sync::Semaphore;
+use tracing_subscriber::EnvFilter;
 
-use crate::{
-    cache::run_cache_cleanup_task,
-    data::{Feed2PodcastDirs, Feed2PodcastTTSConfig},
-};
+use crate::data::{Feed2PodcastDirs, Feed2PodcastTTSConfig};
 
 #[derive(Parser, Debug)]
 #[command(name = "feed2podcast")]
@@ -123,14 +121,17 @@ struct Args {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    if std::env::var_os("RUST_LOG").is_none() {
-        unsafe {
-            std::env::set_var("RUST_LOG", "trace");
-        }
-    }
-    tracing_subscriber::fmt::init();
+    let level = std::env::var("RUST_LOG").unwrap_or(String::from("trace"));
+    tracing_subscriber::fmt()
+        .with_env_filter(EnvFilter::new(format!(
+            "{}={level},poem={level}",
+            env!("CARGO_PKG_NAME").replace("-", "_")
+        )))
+        .init();
 
     let args = Args::parse();
+
+    tracing::info!("Starting server with config: {args:#?}");
 
     let cache_cleanup_method = if let Some(max_sz) = args.cache_size {
         cache::CleanupMethod::MaxStorage((max_sz as u64) * (1e9 as u64))

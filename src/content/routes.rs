@@ -1,4 +1,4 @@
-use std::{sync::Arc};
+use std::sync::Arc;
 
 use poem::{Result, web::Data};
 use poem_openapi::{
@@ -9,7 +9,7 @@ use poem_openapi::{
 use tokio::sync::Semaphore;
 
 use crate::{
-    cache::{self, run_cache_cleanup, run_cache_cleanup_task},
+    cache,
     content::generate::generate_podcast,
     data::{Feed2PodcastDirs, Feed2PodcastTTSConfig, Feed2PodcastURLs},
     schemas::{CategoryTags, DownloadFileResponse},
@@ -61,7 +61,11 @@ impl Router {
         )
         .await?;
 
-        tokio::spawn(run_cache_cleanup_task(app_dirs.cache.clone(), cache_cleanup.clone()));
+        // Run cache cleanup in background
+        tokio::spawn(cache::run_cleanup_task(
+            app_dirs.cache.clone(),
+            cache_cleanup.clone(),
+        ));
 
         Ok(DownloadFileResponse::Audio(
             Binary(audio),

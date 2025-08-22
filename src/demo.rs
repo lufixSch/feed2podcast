@@ -1,4 +1,4 @@
-use std::{fs::create_dir_all, path};
+use std::{path};
 
 use poem::{Error, Result, error::InternalServerError, web::Data};
 use poem_openapi::{
@@ -11,8 +11,7 @@ use serde::Deserialize;
 use serde_json::json;
 
 use crate::{
-    data::{Feed2PodcastDirs, Feed2PodcastTTSConfig, Feed2PodcastURLs},
-    schemas::{CategoryTags, DownloadFileResponse},
+    cache, data::{Feed2PodcastDirs, Feed2PodcastTTSConfig, Feed2PodcastURLs}, schemas::{CategoryTags, DownloadFileResponse}
 };
 
 #[derive(Deserialize)]
@@ -112,19 +111,7 @@ impl Router {
         /// The voice to use for the demo
         Path(voice): Path<String>,
     ) -> Result<DownloadFileResponse> {
-        let cache_dir = path::Path::new(&app_dirs.cache)
-            .join("demos")
-            .join(&tts_conf.model);
-        let audio_path = cache_dir.join(format!("{voice}.mp3"));
-
-        if !cache_dir.exists() {
-            create_dir_all(cache_dir).map_err(|_| {
-                Error::from_string(
-                    "Unable to create cache directory for demos",
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                )
-            })?;
-        };
+        let audio_path = cache::get_demo_path(&app_dirs.cache, &tts_conf.model, &voice)?;
 
         let audio = generate_demo(&audio_path, &voice, &app_urls.tts, &tts_conf.model).await?;
 
