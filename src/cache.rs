@@ -11,7 +11,7 @@ use poem::{Error, Result};
 use reqwest::StatusCode;
 use url::Url;
 
-const DEMO_DIR: &str = "demo";
+const DEMO_DIR: &str = "demos";
 
 /// Convert URL string to posix path
 fn url_to_path(url: &str) -> eyre::Result<String> {
@@ -69,7 +69,7 @@ pub enum CleanupMethod {
 /// Cleanup cache by removing unneeded elements using the given method
 /// Demo directory is always ignored
 pub fn run_cache_cleanup(cache_dir: &str, method: CleanupMethod) -> eyre::Result<()> {
-    const LOGGING_TARGET: &str = "Cache Cleanup";
+    const LOGGING_TARGET: &str = "cache::cleanup";
 
     let cache_dir = Path::new(cache_dir);
     let demo_dir = cache_dir.join(DEMO_DIR);
@@ -83,10 +83,13 @@ pub fn run_cache_cleanup(cache_dir: &str, method: CleanupMethod) -> eyre::Result
         CleanupMethod::MaxStorage(size) => {
             let cache_sz =
                 get_size(cache_dir).wrap_err(eyre!("Unable to get cache directory size"))?;
-            let demo_sz =
-                get_size(&demo_dir).wrap_err(eyre!("Unable to get demo cache directory size"))?;
+            let demo_sz = if demo_dir.exists() {
+                get_size(&demo_dir).wrap_err(eyre!("Unable to get demo cache directory size"))
+            } else {
+                Ok(0)
+            }?;
 
-            assert!(cache_sz > demo_sz); // Demo cache should always be of smaller or equal size
+            assert!(cache_sz >= demo_sz); // Demo cache should always be of smaller or equal size
 
             let actual_sz = cache_sz - demo_sz;
 
@@ -101,9 +104,9 @@ pub fn run_cache_cleanup(cache_dir: &str, method: CleanupMethod) -> eyre::Result
             let to_free = actual_sz - size;
 
             // Collect all files in the cache directory except the demo directory
-            let mut files = glob(&format!("{}/**", cache_dir.display()))
+            let mut files = glob(&format!("{}/**/*", cache_dir.display()))
                 .map_err(|e| eyre!("Failed to read directory: {}", e))?
-                .filter_map(|p| p.ok().filter(|p| !p.starts_with(&demo_dir) || p.is_file()))
+                .filter_map(|p| p.ok().filter(|p| !(p.starts_with(&demo_dir) || p.is_dir())))
                 .collect::<Vec<PathBuf>>();
 
             // Sort files by modification time (oldest first)
@@ -118,6 +121,9 @@ pub fn run_cache_cleanup(cache_dir: &str, method: CleanupMethod) -> eyre::Result
                 if freed >= to_free {
                     break;
                 }
+
+                let file_size = path.metadata().map(|meta| meta.len()).unwrap_or(0);
+
                 if let Err(e) = std::fs::remove_file(&path) {
                     tracing::error!(target: LOGGING_TARGET, "Failed to remove file {path:?}: {e}");
                     continue;
@@ -125,7 +131,7 @@ pub fn run_cache_cleanup(cache_dir: &str, method: CleanupMethod) -> eyre::Result
                     tracing::info!(target: LOGGING_TARGET, "Removed file {path:?}")
                 };
 
-                freed += path.metadata().map(|meta| meta.len()).unwrap_or(0);
+                freed += file_size;
             }
 
             if freed < to_free {
@@ -141,12 +147,12 @@ pub fn run_cache_cleanup(cache_dir: &str, method: CleanupMethod) -> eyre::Result
             tracing::info!(target: LOGGING_TARGET, "Running (Max Age)");
 
             // Collect all files in the cache directory except the demo directory
-            let files = glob(&format!("{}/**", cache_dir.display()))
+            let files = glob(&format!("{}/**/*", cache_dir.display()))
                 .map_err(|e| eyre!("Failed to read directory: {}", e))?
                 .filter_map(|entry| {
                     entry
                         .ok()
-                        .filter(|p| !p.starts_with(&demo_dir) && p.is_file())
+                        .filter(|p| !(p.starts_with(&demo_dir) || p.is_dir()))
                 });
 
             for path in files {
@@ -182,9 +188,11 @@ pub fn run_cache_cleanup(cache_dir: &str, method: CleanupMethod) -> eyre::Result
 }
 
 pub async fn run_cache_cleanup_task(cache_dir: String, method: CleanupMethod) {
-    const LOGGING_TARGET: &str = "Cache Cleanup";
+    const LOGGING_TARGET: &str = "cache::cleanup";
 
     if let Err(e) = run_cache_cleanup(&cache_dir, method) {
         tracing::error!(target: LOGGING_TARGET, "{}", e);
+    } else {
+        tracing::info!(target: LOGGING_TARGET, "Completed")
     }
 }

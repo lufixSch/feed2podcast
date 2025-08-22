@@ -21,7 +21,10 @@ mod schemas;
 use data::Feed2PodcastURLs;
 use tokio::sync::Semaphore;
 
-use crate::data::{Feed2PodcastDirs, Feed2PodcastTTSConfig};
+use crate::{
+    cache::run_cache_cleanup_task,
+    data::{Feed2PodcastDirs, Feed2PodcastTTSConfig},
+};
 
 #[derive(Parser, Debug)]
 #[command(name = "feed2podcast")]
@@ -113,7 +116,7 @@ struct Args {
     #[arg(
         long,
         help = "Maximum cache age in days (cleanup only runs when new podcast is generated)",
-        env = "FEED2PODCAST_MAX_CACHE_SIZE"
+        env = "FEED2PODCAST_MAX_CACHE_AGE"
     )]
     cache_age: Option<u32>,
 }
@@ -122,7 +125,7 @@ struct Args {
 async fn main() -> Result<()> {
     if std::env::var_os("RUST_LOG").is_none() {
         unsafe {
-            std::env::set_var("RUST_LOG", "poem=trace");
+            std::env::set_var("RUST_LOG", "trace");
         }
     }
     tracing_subscriber::fmt::init();
@@ -130,7 +133,7 @@ async fn main() -> Result<()> {
     let args = Args::parse();
 
     let cache_cleanup_method = if let Some(max_sz) = args.cache_size {
-        cache::CleanupMethod::MaxStorage((max_sz as u64) * (10 ^ 9))
+        cache::CleanupMethod::MaxStorage((max_sz as u64) * (1e9 as u64))
     } else if let Some(max_days) = args.cache_age {
         cache::CleanupMethod::MaxAge(Duration::from_secs((max_days as u64) * 24 * 60 * 60))
     } else {
