@@ -48,7 +48,7 @@ impl Router {
     ) -> Result<DownloadFileResponse> {
         let audio_path = cache::get_podcast_path(&app_dirs.cache, &url, &uid, &voice)?;
 
-        let audio = generate_podcast(
+        let (audio, was_generated) = generate_podcast(
             &audio_path,
             &url,
             &uid,
@@ -61,11 +61,13 @@ impl Router {
         )
         .await?;
 
-        // Run cache cleanup in background
-        tokio::spawn(cache::run_cleanup_task(
-            app_dirs.cache.clone(),
-            cache_cleanup.clone(),
-        ));
+        if was_generated {
+            // Run cache cleanup in background
+            tokio::spawn(cache::run_cleanup_task(
+                app_dirs.cache.clone(),
+                cache_cleanup.clone(),
+            ));
+        }
 
         Ok(DownloadFileResponse::Audio(
             Binary(audio),

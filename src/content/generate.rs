@@ -16,7 +16,7 @@ pub async fn generate_podcast(
     tts_api_base: &str,
     tts_model: &str,
     permit: &Semaphore,
-) -> Result<Vec<u8>> {
+) -> Result<(Vec<u8>, bool)> {
     let _perm = permit.acquire().await.map_err(|e| {
         Error::from_string(
             format!("Failed to acquire permit for podcast generation: {e}"),
@@ -127,13 +127,16 @@ pub async fn generate_podcast(
             )
         })?;
 
-        podcast.into()
+        (podcast.into(), true)
     } else {
-        std::fs::read(file_path).map_err(|e| {
-            Error::from_string(
-                format!("Failed to read audio file: {e}"),
-                StatusCode::INTERNAL_SERVER_ERROR,
-            )
-        })?
+        (
+            std::fs::read(file_path).map_err(|e| {
+                Error::from_string(
+                    format!("Failed to read audio file: {e}"),
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                )
+            })?,
+            false,
+        )
     })
 }

@@ -133,6 +133,7 @@ async fn main() -> Result<()> {
 
     tracing::info!("Starting server with config: {args:#?}");
 
+
     let cache_cleanup_method = if let Some(max_sz) = args.cache_size {
         cache::CleanupMethod::MaxStorage((max_sz as u64) * (1e9 as u64))
     } else if let Some(max_days) = args.cache_age {

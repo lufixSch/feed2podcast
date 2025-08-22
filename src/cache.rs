@@ -87,13 +87,11 @@ pub enum CleanupMethod {
 /// Cleanup cache by removing unneeded elements using the given method
 /// Demo directory is always ignored
 pub fn run_cleanup(cache_dir: &str, method: CleanupMethod) -> eyre::Result<()> {
-    const LOGGING_TARGET: &str = "cache::cleanup";
-
     let cache_dir = Path::new(cache_dir);
     let demo_dir = cache_dir.join(DEMO_DIR);
 
     if !cache_dir.exists() {
-        tracing::info!(target: LOGGING_TARGET, "Skipping (No cache dir)");
+        tracing::info!("Skipping (No cache dir)");
         return Ok(());
     };
 
@@ -112,11 +110,11 @@ pub fn run_cleanup(cache_dir: &str, method: CleanupMethod) -> eyre::Result<()> {
             let actual_sz = cache_sz - demo_sz;
 
             if actual_sz <= size {
-                tracing::info!(target: LOGGING_TARGET, "Skipping (Max size not reached)");
+                tracing::info!("Skipping (Max size not reached)");
                 return Ok(());
             };
 
-            tracing::info!(target: LOGGING_TARGET, "Running (Max Storage)");
+            tracing::info!("Running Cleanup (Max Storage)");
 
             // Calculate how much space to free
             let to_free = actual_sz - size;
@@ -143,17 +141,17 @@ pub fn run_cleanup(cache_dir: &str, method: CleanupMethod) -> eyre::Result<()> {
                 let file_size = path.metadata().map(|meta| meta.len()).unwrap_or(0);
 
                 if let Err(e) = std::fs::remove_file(&path) {
-                    tracing::error!(target: LOGGING_TARGET, "Failed to remove file {path:?}: {e}");
+                    tracing::error!("Failed to remove file {path:?}: {e}");
                     continue;
                 } else {
-                    tracing::info!(target: LOGGING_TARGET, "Removed file {path:?}")
+                    tracing::info!("Removed file {path:?}")
                 };
 
                 freed += file_size;
             }
 
             if freed < to_free {
-                tracing::error!(target: LOGGING_TARGET, "Failed to free enough space in the cache directory");
+                tracing::error!("Failed to free enough space in the cache directory");
             };
 
             Ok(())
@@ -162,7 +160,7 @@ pub fn run_cleanup(cache_dir: &str, method: CleanupMethod) -> eyre::Result<()> {
             // Get current system time
             let now = SystemTime::now();
 
-            tracing::info!(target: LOGGING_TARGET, "Running (Max Age)");
+            tracing::info!("Running Cleanup (Max Age)");
 
             // Collect all files in the cache directory except the demo directory
             let files = glob(&format!("{}/**/*", cache_dir.display()))
@@ -177,7 +175,7 @@ pub fn run_cleanup(cache_dir: &str, method: CleanupMethod) -> eyre::Result<()> {
                 let metadata = match path.metadata() {
                     Ok(meta) => meta,
                     Err(e) => {
-                        tracing::error!(target: LOGGING_TARGET, "Failed to get metadata for {path:?}: {e}");
+                        tracing::error!("Failed to get metadata for {path:?}: {e}");
                         continue;
                     }
                 };
@@ -185,16 +183,16 @@ pub fn run_cleanup(cache_dir: &str, method: CleanupMethod) -> eyre::Result<()> {
                 let file_modified = match metadata.modified() {
                     Ok(modified) => modified,
                     Err(e) => {
-                        tracing::error!(target: LOGGING_TARGET, "Failed to get modified time for {path:?}: {e}");
+                        tracing::error!("Failed to get modified time for {path:?}: {e}");
                         continue;
                     }
                 };
 
                 if now.duration_since(file_modified).unwrap_or(Duration::MAX) > age {
                     if let Err(e) = std::fs::remove_file(&path) {
-                        tracing::error!(target: LOGGING_TARGET, "Failed to remove file {path:?}: {e}");
+                        tracing::error!("Failed to remove file {path:?}: {e}");
                     } else {
-                        tracing::info!(target: LOGGING_TARGET, "Removed file {path:?}")
+                        tracing::info!("Removed file {path:?}")
                     }
                 }
             }
@@ -207,11 +205,9 @@ pub fn run_cleanup(cache_dir: &str, method: CleanupMethod) -> eyre::Result<()> {
 
 /// Async task that runs cleanup and captures all errors
 pub async fn run_cleanup_task(cache_dir: String, method: CleanupMethod) {
-    const LOGGING_TARGET: &str = "cache::cleanup";
-
     if let Err(e) = run_cleanup(&cache_dir, method) {
-        tracing::error!(target: LOGGING_TARGET, "{}", e);
+        tracing::error!("{}", e);
     } else {
-        tracing::info!(target: LOGGING_TARGET, "Completed")
+        tracing::info!("Cleanup Completed")
     }
 }

@@ -1,4 +1,4 @@
-use std::{path};
+use std::path;
 
 use poem::{Error, Result, error::InternalServerError, web::Data};
 use poem_openapi::{
@@ -11,7 +11,9 @@ use serde::Deserialize;
 use serde_json::json;
 
 use crate::{
-    cache, data::{Feed2PodcastDirs, Feed2PodcastTTSConfig, Feed2PodcastURLs}, schemas::{CategoryTags, DownloadFileResponse}
+    cache,
+    data::{Feed2PodcastDirs, Feed2PodcastTTSConfig, Feed2PodcastURLs},
+    schemas::{CategoryTags, DownloadFileResponse},
 };
 
 #[derive(Deserialize)]
@@ -113,6 +115,7 @@ impl Router {
     ) -> Result<DownloadFileResponse> {
         let audio_path = cache::get_demo_path(&app_dirs.cache, &tts_conf.model, &voice)?;
 
+        tracing::info!("Creating demo audio!");
         let audio = generate_demo(&audio_path, &voice, &app_urls.tts, &tts_conf.model).await?;
 
         Ok(DownloadFileResponse::Audio(
