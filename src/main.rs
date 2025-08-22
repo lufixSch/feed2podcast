@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{sync::Arc, time::Duration};
 
 use poem::{
     EndpointExt, Route,
@@ -15,6 +15,7 @@ mod demo;
 mod feed;
 mod webui;
 
+mod cache;
 mod data;
 mod schemas;
 use data::Feed2PodcastURLs;
@@ -99,6 +100,22 @@ struct Args {
         default_value = "kokoro"
     )]
     model: String,
+
+    /// Max cache size
+    #[arg(
+        long,
+        help = "Maximum cache size GB (Only one of --cache-size and --cache-age is taken into account, If both are provided --cache-size is used)",
+        env = "FEED2PODCAST_MAX_CACHE_SIZE"
+    )]
+    cache_size: Option<u32>,
+
+    /// Max cache age
+    #[arg(
+        long,
+        help = "Maximum cache age in days (cleanup only runs when new podcast is generated)",
+        env = "FEED2PODCAST_MAX_CACHE_SIZE"
+    )]
+    cache_age: Option<u32>,
 }
 
 #[tokio::main]
@@ -111,6 +128,14 @@ async fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
 
     let args = Args::parse();
+
+    let cache_cleanup_method = if let Some(max_sz) = args.cache_size {
+        cache::CleanupMethod::MaxStorage((max_sz as u64) * (10 ^ 9))
+    } else if let Some(max_days) = args.cache_age {
+        cache::CleanupMethod::MaxAge(Duration::from_secs((max_days as u64) * 24 * 60 * 60))
+    } else {
+        cache::CleanupMethod::None
+    };
 
     // The number of allowed parallel podcast generations
     // WARNING: Currently more than 1 could cause issues where one podcast is generated multiple
@@ -160,7 +185,8 @@ async fn main() -> Result<()> {
                         Some(args.voices)
                     },
                 })
-                .data(podcast_generation_permit),
+                .data(podcast_generation_permit)
+                .data(cache_cleanup_method),
         )
         .await
         .map_err(|e| eyre!(format!("Server failed with error: {e}")))

@@ -1,33 +1,21 @@
-use std::{fs::create_dir_all, path, sync::Arc};
+use std::{sync::Arc};
 
-use eyre::eyre;
-use poem::{Error, Result, web::Data};
+use poem::{Result, web::Data};
 use poem_openapi::{
     OpenApi,
     param::{Path, Query},
     payload::Binary,
 };
-use reqwest::StatusCode;
 use tokio::sync::Semaphore;
-use url::Url;
 
 use crate::{
+    cache::{self, run_cache_cleanup, run_cache_cleanup_task},
     content::generate::generate_podcast,
     data::{Feed2PodcastDirs, Feed2PodcastTTSConfig, Feed2PodcastURLs},
-    schemas::{DownloadFileResponse, CategoryTags},
+    schemas::{CategoryTags, DownloadFileResponse},
 };
 
 pub struct Router;
-
-/// Convert URL string to posix path
-fn url_to_path(url: &str) -> eyre::Result<String> {
-    match Url::parse(url) {
-        Ok(url) => {
-            Ok(String::from(url.host_str().ok_or(eyre!("Got URL without howt!"))?) + url.path())
-        }
-        Err(_) => Ok(String::from(url)),
-    }
-}
 
 #[OpenApi(prefix_path = "content", tag = "CategoryTags::Feed")]
 impl Router {
@@ -38,6 +26,7 @@ impl Router {
         &self,
         Data(app_urls): Data<&Feed2PodcastURLs>,
         Data(app_dirs): Data<&Feed2PodcastDirs>,
+        Data(cache_cleanup): Data<&cache::CleanupMethod>,
         Data(tts_conf): Data<&Feed2PodcastTTSConfig>,
         Data(permit): Data<&Arc<Semaphore>>,
 
@@ -57,31 +46,7 @@ impl Router {
         /// includes long numbers)
         Query(normalize): Query<bool>,
     ) -> Result<DownloadFileResponse> {
-        let url_path = url_to_path(&url).map_err(|e| {
-            Error::from_string(
-                format!("Unable to create cache directory from feed URL: {e}"),
-                StatusCode::INTERNAL_SERVER_ERROR,
-            )
-        })?;
-        let id_path = url_to_path(&uid).map_err(|e| {
-            Error::from_string(
-                format!("Unable to create cache directory from UID: {e}"),
-                StatusCode::INTERNAL_SERVER_ERROR,
-            )
-        })?;
-        let file_dir = path::Path::new(&app_dirs.cache)
-            .join(&url_path)
-            .join(&id_path);
-        let audio_path = file_dir.join(format!("{voice}.mp3"));
-
-        if !file_dir.exists() {
-            create_dir_all(file_dir).map_err(|_| {
-                Error::from_string(
-                    "Unable to create cache directory for podcast",
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                )
-            })?;
-        };
+        let audio_path = cache::get_podcast_path(&app_dirs.cache, &url, &uid, &voice)?;
 
         let audio = generate_podcast(
             &audio_path,
@@ -95,6 +60,8 @@ impl Router {
             permit,
         )
         .await?;
+
+        tokio::spawn(run_cache_cleanup_task(app_dirs.cache.clone(), cache_cleanup.clone()));
 
         Ok(DownloadFileResponse::Audio(
             Binary(audio),
